@@ -1,4 +1,4 @@
-# Trae Correo - Sistema de Envío de Frases Diarias
+# Sistema de Envío de Frases Diarias
 
 Un sistema web completo para el envío automatizado de frases diarias por correo electrónico, con gestión de usuarios y panel de administración.
 
@@ -206,4 +206,5 @@ stable/
 ## Licencia
 
 Distribuido bajo la Licencia MIT. Ver `LICENSE` para más información.
+
 
