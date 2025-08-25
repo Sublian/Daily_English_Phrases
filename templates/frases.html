@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    
+    <!-- Sección para usuarios autenticados con rol 'usuario' -->
+    {% if current_user.is_authenticated and current_user.rol == 'usuario' %}
+    <div class="card mb-4 border-info">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-user"></i> Mis Frases Diarias</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Aquí puedes ver las frases que has recibido por email.</p>
+            
+            <!-- Filtro de fechas para el usuario -->
+            <form method="get" action="{{ url_for('main.frases') }}" class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label for="fecha_desde" class="form-label">Desde:</label>
+                    <input type="date" class="form-control" name="fecha_desde" id="fecha_desde" value="{{ request.args.get('fecha_desde', '') }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="fecha_hasta" class="form-label">Hasta:</label>
+                    <input type="date" class="form-control" name="fecha_hasta" id="fecha_hasta" value="{{ request.args.get('fecha_hasta', '') }}">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-info me-2">Filtrar</button>
+                    <a href="{{ url_for('main.frases') }}" class="btn btn-secondary">Limpiar</a>
+                </div>
+                <input type="hidden" name="user_view" value="1">
+            </form>
+            
+            <!-- Tabla de frases del usuario -->
+            {% if mis_frases %}
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead class="table-info">
+                        <tr>
+                            <th>Fecha Recibida</th>
+                            <th>Frase</th>
+                            <th>Significado</th>
+                            <th>Ejemplo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for frase in mis_frases %}
+                        <tr>
+                            <td>{{ frase.fecha_envio.strftime('%d/%m/%Y') if frase.fecha_envio else 'N/A' }}</td>
+                            <td><strong>{{ frase.frase }}</strong></td>
+                            <td>{{ frase.significado }}</td>
+                            <td><em>{{ frase.ejemplo }}</em></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación para usuarios -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Paginación de frases">
+                <ul class="pagination justify-content-center">
+                    {% if has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.frases', page=page-1, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+                            <i class="fas fa-chevron-left"></i> Anterior
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-left"></i> Anterior</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == page %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ p }}</span>
+                        </li>
+                        {% elif p <= 3 or p > total_pages - 3 or (p >= page - 1 and p <= page + 1) %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.frases', page=p, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">{{ p }}</a>
+                        </li>
+                        {% elif p == 4 and page > 5 %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% elif p == total_pages - 3 and page < total_pages - 4 %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.frases', page=page+1, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+                            Siguiente <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Siguiente <i class="fas fa-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            
+            <!-- Información de paginación -->
+            <div class="text-center text-muted mt-2">
+                <small>Mostrando {{ mis_frases|length }} de {{ total }} frases (Página {{ page }} de {{ total_pages }})</small>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Aún no has recibido frases por email o no hay frases en el rango de fechas seleccionado.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Sección de administración (solo para admins) -->
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestión de Frases Diarias</h2>
+        <button class="btn btn-success" onclick="mostrarModalFrase()">
+            <i class="fas fa-plus"></i> Agregar Frase
+        </button>
+    </div>
+    
+    <!-- Panel de búsqueda y filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('main.frases') }}" class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="search" placeholder="Buscar por frase o significado" value="{{ request.args.get('search', '') }}">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <input type="number" class="form-control" name="dia" placeholder="Día del año (1-365)" value="{{ request.args.get('dia', '') }}" min="1" max="365">
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('main.frases') }}" class="btn btn-secondary w-100">Limpiar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de frases -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-primary">
+                <tr>
+                    <th>ID</th>
+                    <th>Día del Año</th>
+                    <th>Frase</th>
+                    <th>Significado</th>
+                    <th>Ejemplo</th>
+                    <th>Fecha Creación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for frase in frases %}
+                <tr>
+                    <td>{{ frase.id }}</td>
+                    <td>
+                        <span class="badge bg-info">{{ frase.dia_del_ano }}</span>
+                    </td>
+                    <td>
+                        <strong>{{ frase.frase }}</strong>
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ frase.significado[:100] }}{% if frase.significado|length > 100 %}...{% endif %}</small>
+                    </td>
+                    <td>
+                        <small class="text-secondary">{{ frase.ejemplo[:80] }}{% if frase.ejemplo|length > 80 %}...{% endif %}</small>
+                    </td>
+                    <td>
+                        <small>{{ frase.creado_en.strftime('%d/%m/%Y') if frase.creado_en else '-' }}</small>
+                    </td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editarFrase({{ frase.id }})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarFrase({{ frase.id }})" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="fas fa-quote-left fa-2x mb-2"></i><br>
+                        No hay frases registradas
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if total_pages > 1 %}
+    <nav aria-label="Paginación de frases">
+        <ul class="pagination justify-content-center">
+            {% if has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.frases', page=page-1, search=search, dia=dia) }}">
+                    <i class="fas fa-chevron-left"></i> Anterior
+                </a>
+            </li>
+            {% endif %}
+            
+            {% for p in range(1, total_pages + 1) %}
+                {% if p == page %}
+                <li class="page-item active">
+                    <span class="page-link">{{ p }}</span>
+                </li>
+                {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.frases', page=p, search=search, dia=dia) }}">{{ p }}</a>
+                </li>
+                {% elif p == 4 and page > 5 %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% elif p == total_pages - 3 and page < total_pages - 4 %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.frases', page=page+1, search=search, dia=dia) }}">
+                    Siguiente <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    <!-- Información de paginación -->
+    <div class="text-center text-muted mt-3">
+        <small>
+            Mostrando {{ ((page-1) * 20 + 1) if frases else 0 }} - {{ (page-1) * 20 + frases|length }} de {{ total }} frases
+        </small>
+    </div>
+</div>
+
+<!-- Modal para agregar/editar frase -->
+<div class="modal fade" id="modalFrase" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalFraseTitle">Agregar Frase</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formFrase">
+                    <input type="hidden" id="fraseId" name="id">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="diaDelAno" class="form-label">Día del Año *</label>
+                                <input type="number" class="form-control" id="diaDelAno" name="dia_del_ano" 
+                                       min="1" max="365" required>
+                                <div class="form-text">Número entre 1 y 365</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Fecha Aproximada</label>
+                                <input type="text" class="form-control" id="fechaAproximada" readonly>
+                                <div class="form-text">Fecha estimada del año actual</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="frase" class="form-label">Frase en Inglés *</label>
+                        <input type="text" class="form-control" id="frase" name="frase" required 
+                               placeholder="Ej: Break a leg">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="significado" class="form-label">Significado</label>
+                        <textarea class="form-control" id="significado" name="significado" rows="3" 
+                                  placeholder="Explicación del significado de la frase"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="ejemplo" class="form-label">Ejemplo de Uso</label>
+                        <textarea class="form-control" id="ejemplo" name="ejemplo" rows="2" 
+                                  placeholder="Ejemplo de cómo usar la frase en contexto"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarFrase()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let modalFrase;
+
+document.addEventListener('DOMContentLoaded', function() {
+    modalFrase = new bootstrap.Modal(document.getElementById('modalFrase'));
+    
+    // Calcular fecha aproximada cuando cambia el día del año
+    document.getElementById('diaDelAno').addEventListener('input', function() {
+        const dia = parseInt(this.value);
+        if (dia >= 1 && dia <= 365) {
+            const fecha = new Date(new Date().getFullYear(), 0, dia);
+            document.getElementById('fechaAproximada').value = fecha.toLocaleDateString('es-ES', {
+                day: 'numeric',
+                month: 'long'
+            });
+        } else {
+            document.getElementById('fechaAproximada').value = '';
+        }
+    });
+});
+
+function mostrarModalFrase() {
+    document.getElementById('modalFraseTitle').textContent = 'Agregar Frase';
+    document.getElementById('formFrase').reset();
+    document.getElementById('fraseId').value = '';
+    document.getElementById('fechaAproximada').value = '';
+    modalFrase.show();
+}
+
+function editarFrase(id) {
+    fetch(`/frases/${id}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+            
+            document.getElementById('modalFraseTitle').textContent = 'Editar Frase';
+            document.getElementById('fraseId').value = data.id;
+            document.getElementById('diaDelAno').value = data.dia_del_ano;
+            document.getElementById('frase').value = data.frase;
+            document.getElementById('significado').value = data.significado || '';
+            document.getElementById('ejemplo').value = data.ejemplo || '';
+            
+            // Calcular fecha aproximada
+            const fecha = new Date(new Date().getFullYear(), 0, data.dia_del_ano);
+            document.getElementById('fechaAproximada').value = fecha.toLocaleDateString('es-ES', {
+                day: 'numeric',
+                month: 'long'
+            });
+            
+            modalFrase.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al cargar la frase');
+        });
+}
+
+function guardarFrase() {
+    const formData = new FormData(document.getElementById('formFrase'));
+    const data = Object.fromEntries(formData.entries());
+    
+    // Validaciones
+    if (!data.dia_del_ano || !data.frase) {
+        alert('Día del año y frase son requeridos');
+        return;
+    }
+    
+    const diaDelAno = parseInt(data.dia_del_ano);
+    if (diaDelAno < 1 || diaDelAno > 365) {
+        alert('El día del año debe estar entre 1 y 365');
+        return;
+    }
+    
+    fetch('/frases/guardar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            modalFrase.hide();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al guardar la frase');
+    });
+}
+
+function eliminarFrase(id) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta frase?')) {
+        return;
+    }
+    
+    fetch(`/frases/${id}/eliminar`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al eliminar la frase');
+    });
+}
+</script>
+{% endif %}
+
+</div>
+{% endblock %}

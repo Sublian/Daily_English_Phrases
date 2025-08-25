@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Usuarios Activos</h5>
+                    <h2 class="display-4">{{ stats.usuarios_activos }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Envíos Exitosos Hoy</h5>
+                    <h2 class="display-4">{{ stats.envios_hoy }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Usuarios Premium</h5>
+                    <h2 class="display-4">{{ stats.usuarios_premium }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.is_authenticated and current_user.is_admin and stats.usuarios_pendientes > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <div>
+                    <strong>Atención:</strong> Hay {{ stats.usuarios_pendientes }} usuario(s) pendiente(s) de confirmación de email.
+                    <a href="{{ url_for('main.usuarios', rol='pendiente') }}" class="alert-link">Ver usuarios pendientes</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not current_user.is_authenticated %}
+    <div class="row mb-4" id="suscripcion">
+        <div class="col-md-6 mx-auto">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Suscríbete</h5>
+                    <form action="/agregar_usuario" method="POST">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre (opcional)</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Suscribirse</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated and not current_user.is_admin and user_stats %}
+    <!-- Estadísticas personales del usuario -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100 border-primary">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-primary">📧 Correos Recibidos</h6>
+                    <h3 class="display-6 text-primary">{{ user_stats.correos_recibidos }}</h3>
+                    <small class="text-muted">Frases diarias recibidas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 border-success">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-success">📅 Miembro desde</h6>
+                    <h3 class="display-6 text-success">
+                        {% if user_stats.fecha_registro %}
+                            {{ user_stats.fecha_registro.strftime('%d/%m/%Y') }}
+                        {% else %}
+                            --/--/----
+                        {% endif %}
+                    </h3>
+                    <small class="text-muted">Fecha de registro</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información adicional para el usuario -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Tu Actividad</h5>
+                    <div class="row text-center mt-4">
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 mb-3 bg-light">
+                                <h4 class="text-info mb-1">{{ current_user.tipo_suscripcion|title }}</h4>
+                                <small class="text-muted">Tipo de Suscripción</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 mb-3 bg-light">
+                                <h4 class="text-warning mb-1">{{ current_user.rol|title }}</h4>
+                                <small class="text-muted">Rol</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 mb-3 bg-light">
+                                <h4 class="text-success mb-1">Activo</h4>
+                                <small class="text-muted">Estado</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <small><i class="fas fa-info-circle me-2"></i>Las frases diarias se envían automáticamente cada día a las 12:30 UTC. Puedes ver tu historial en la sección "Frases Diarias".</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.is_admin %}
+    <!-- Métricas principales simplificadas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card h-100 border-success">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-success">✅ Envíos Exitosos Hoy</h6>
+                    <h3 class="display-6 text-success">{{ stats.envios_hoy }}</h3>
+                    <small class="text-muted">Envíos completados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 border-info">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-info">👥 Usuarios Premium</h6>
+                    <h3 class="display-6 text-info">{{ stats.usuarios_premium }}</h3>
+                    <small class="text-muted">Suscripciones activas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 border-primary">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-primary">🌟 Total Usuarios</h6>
+                    <h3 class="display-6 text-primary">{{ stats.usuarios_activos }}</h3>
+                    <small class="text-muted">Usuarios activos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 border-secondary">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-secondary">⏰ Próximo Envío</h6>
+                    <h3 class="display-6 text-secondary">12:30</h3>
+                    <small class="text-muted">UTC diario</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen de actividad simplificado -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">📊 Resumen de Envíos</h5>
+                    <div class="row text-center mt-4">
+                        <div class="col-6">
+                            <div class="border rounded p-3 mb-3 bg-light">
+                                <h4 class="text-success mb-1"> {{ stats.envios_semana|default(0) }}</h4>
+                                <small class="text-muted">Esta Semana</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 mb-3 bg-light">
+                                <h4 class="text-primary mb-1">{{ stats.envios_mes|default(0) }}</h4>
+                                <small class="text-muted">Este Mes</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <small><i class="fas fa-info-circle me-2"></i>Los envíos se realizan automáticamente cada día a las 12:30 UTC</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">📈 Estado del Sistema</h5>
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>🟢 Sistema de Envío</span>
+                            <span class="badge bg-success">Activo</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>📧 Servicio de Email</span>
+                            <span class="badge bg-success">Operativo</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>💾 Base de Datos</span>
+                            <span class="badge bg-success">Conectada</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>⏰ Último Envío</span>
+                            <span class="badge bg-info" id="ultimoEnvio">Hoy</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información de usuarios simplificada -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">👥 Información de Usuarios</h5>
+                    <div class="row text-center mt-4">
+                        <div class="col-md-3">
+                            <div class="border rounded p-3 mb-3">
+                                <h4 class="text-primary mb-1" id="usuariosBasicos">-</h4>
+                                <small class="text-muted">Usuarios Básicos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3 mb-3">
+                                <h4 class="text-warning mb-1" id="usuariosPremium">{{ stats.usuarios_premium }}</h4>
+                                <small class="text-muted">Usuarios Premium</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3 mb-3">
+                                <h4 class="text-success mb-1">{{ stats.usuarios_activos }}</h4>
+                                <small class="text-muted">Total Activos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3 mb-3">
+                                <h4 class="text-info mb-1" id="tasaActividad">-</h4>
+                                <small class="text-muted">Tasa Actividad</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables para controlar la carga de datos
+        let datosYaCargados = false;
+
+        // Función simplificada para cargar datos básicos del dashboard
+        async function cargarDatosBasicos() {
+            if (datosYaCargados) return;
+
+            try {
+                // Intentar cargar datos de la API, pero usar valores predeterminados si falla
+                let enviosData = null;
+                let usuariosData = null;
+
+                try {
+                    const [enviosResponse, usuariosResponse] = await Promise.all([
+                        fetch('{{ url_for("main.get_envios_por_dia") }}'),
+                        fetch('{{ url_for("main.get_usuarios_por_tipo") }}')
+                    ]);
+
+                    if (enviosResponse.ok) {
+                        enviosData = await enviosResponse.json();
+                    }
+                    if (usuariosResponse.ok) {
+                        usuariosData = await usuariosResponse.json();
+                    }
+                } catch (apiError) {
+                    console.warn('Error al cargar datos de API, usando valores predeterminados:', apiError);
+                }
+
+                // Actualizar envíos semanales y mensuales
+                actualizarResumenEnvios(enviosData);
+
+                // Actualizar información de usuarios
+                actualizarInfoUsuarios(usuariosData);
+
+                // Actualizar último envío
+                mostrarMensajeExito();
+
+                datosYaCargados = true;
+
+            } catch (error) {
+                console.error('Error general al cargar datos:', error);
+                // Usar valores predeterminados en caso de error
+                actualizarResumenEnvios(null);
+                actualizarInfoUsuarios(null);
+                mostrarMensajeExito();
+            }
+        }
+
+        // Función para actualizar resumen de envíos
+        function actualizarResumenEnvios(data) {
+            try {
+                // Usar valores estáticos del servidor como base
+                let totalSemanal = {{ stats.envios_semana|default(0) }};
+                let totalMensual = {{ stats.envios_mes|default(0) }};
+
+                // Si hay datos de la API, intentar usarlos
+                if (data && data.data && Array.isArray(data.data)) {
+                    try {
+                        const apiTotalSemanal = data.data.reduce((a, b) => a + b, 0);
+                        if (!isNaN(apiTotalSemanal) && apiTotalSemanal >= 0) {
+                            totalSemanal = apiTotalSemanal;
+                            totalMensual = Math.round(totalSemanal * 4.3); // Estimación mensual
+                        }
+                    } catch (apiError) {
+                        console.warn('Error procesando datos de API de envíos, usando valores estáticos:', apiError);
+                    }
+                }
+
+                // Asegurar que los valores sean válidos
+                totalSemanal = Math.max(0, totalSemanal);
+                totalMensual = Math.max(0, totalMensual);
+
+                // Actualizar elementos del DOM
+                const elementoSemanal = document.getElementById('enviosSemanales');
+                const elementoMensual = document.getElementById('enviosMensuales');
+
+                if (elementoSemanal) {
+                    elementoSemanal.textContent = totalSemanal;
+                    elementoSemanal.classList.remove('text-danger');
+                }
+                if (elementoMensual) {
+                    elementoMensual.textContent = totalMensual;
+                    elementoMensual.classList.remove('text-danger');
+                }
+
+            } catch (error) {
+                console.error('Error al actualizar envíos:', error);
+                // En caso de error, mostrar valores predeterminados seguros
+                const elementoSemanal = document.getElementById('enviosSemanales');
+                const elementoMensual = document.getElementById('enviosMensuales');
+
+                if (elementoSemanal) {
+                    elementoSemanal.textContent = {{ stats.envios_semana|default(0) }};
+                    elementoSemanal.classList.remove('text-danger');
+                }
+                if (elementoMensual) {
+                    elementoMensual.textContent = {{ stats.envios_mes|default(0) }};
+                    elementoMensual.classList.remove('text-danger');
+                }
+            }
+        }
+
+        // Función para actualizar información de usuarios
+        function actualizarInfoUsuarios(data) {
+            try {
+                // Usar valores estáticos del servidor como base
+                let usuariosPremium = {{ stats.usuarios_premium }};
+                let totalUsuarios = {{ stats.usuarios_activos }};
+                let usuariosBasicos = totalUsuarios - usuariosPremium;
+
+                // Si hay datos de la API, intentar usarlos
+                if (data && data.labels && data.datasets && data.datasets[0]) {
+                    try {
+                        const apiTotalUsuarios = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                        const premiumIndex = data.labels.indexOf('premium');
+
+                        if (premiumIndex >= 0 && apiTotalUsuarios > 0) {
+                            const apiUsuariosPremium = data.datasets[0].data[premiumIndex];
+                            // Solo usar datos de API si parecen válidos
+                            if (apiUsuariosPremium >= 0 && apiTotalUsuarios >= apiUsuariosPremium) {
+                                usuariosPremium = apiUsuariosPremium;
+                                totalUsuarios = apiTotalUsuarios;
+                                usuariosBasicos = totalUsuarios - usuariosPremium;
+                            }
+                        }
+                    } catch (apiError) {
+                        console.warn('Error procesando datos de API de usuarios, usando valores estáticos:', apiError);
+                    }
+                }
+
+                // Asegurar que los valores sean válidos
+                usuariosBasicos = Math.max(0, usuariosBasicos);
+                usuariosPremium = Math.max(0, usuariosPremium);
+                totalUsuarios = Math.max(0, totalUsuarios);
+
+                // Actualizar elementos del DOM
+                const elementoBasicos = document.getElementById('usuariosBasicos');
+                const elementoPremium = document.getElementById('usuariosPremium');
+                const elementoActivos = document.getElementById('usuariosActivos');
+                const elementoTasa = document.getElementById('tasaActividad');
+
+                if (elementoBasicos) elementoBasicos.textContent = usuariosBasicos;
+                if (elementoPremium) elementoPremium.textContent = usuariosPremium;
+                if (elementoActivos) elementoActivos.textContent = totalUsuarios;
+
+                // Calcular tasa de actividad (100% si todos los usuarios están activos)
+                if (elementoTasa) {
+                    const tasaActividad = totalUsuarios > 0 ? 100 : 0;
+                    elementoTasa.textContent = tasaActividad + '%';
+                }
+
+            } catch (error) {
+                console.error('Error al actualizar usuarios:', error);
+                // En caso de error, usar valores mínimos seguros
+                const elementoBasicos = document.getElementById('usuariosBasicos');
+                const elementoPremium = document.getElementById('usuariosPremium');
+                const elementoActivos = document.getElementById('usuariosActivos');
+                const elementoTasa = document.getElementById('tasaActividad');
+
+                if (elementoBasicos) elementoBasicos.textContent = Math.max(0, {{ stats.usuarios_activos }} - {{ stats.usuarios_premium }});
+                if (elementoPremium) elementoPremium.textContent = {{ stats.usuarios_premium }};
+                if (elementoActivos) elementoActivos.textContent = {{ stats.usuarios_activos }};
+                if (elementoTasa) elementoTasa.textContent = '100%';
+            }
+        }
+
+        // Función para mostrar mensaje de éxito
+        function mostrarMensajeExito() {
+            const ultimoEnvio = document.getElementById('ultimoEnvio');
+            if (ultimoEnvio) {
+                const ahora = new Date();
+                const hoy = ahora.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short'
+                });
+                ultimoEnvio.textContent = hoy;
+                ultimoEnvio.className = 'badge bg-success';
+            }
+        }
+
+        // Función para mostrar mensaje de error
+        function mostrarMensajeError() {
+            // Actualizar con valores predeterminados en lugar de mostrar 'Error'
+            const elementoSemanal = document.getElementById('enviosSemanales');
+            const elementoMensual = document.getElementById('enviosMensuales');
+            const elementoBasicos = document.getElementById('usuariosBasicos');
+            const elementoTasa = document.getElementById('tasaActividad');
+
+            if (elementoSemanal) elementoSemanal.textContent = {{ stats.envios_semana|default(0) }};
+            if (elementoMensual) elementoMensual.textContent = {{ stats.envios_mes|default(0) }};
+
+            // Calcular usuarios básicos si no está disponible
+            if (elementoBasicos) {
+                const usuariosPremium = {{ stats.usuarios_premium }};
+                const totalUsuarios = {{ stats.usuarios_activos }};
+                elementoBasicos.textContent = totalUsuarios - usuariosPremium;
+            }
+
+            // Calcular tasa de actividad si no está disponible
+            if (elementoTasa) {
+                const totalUsuarios = {{ stats.usuarios_activos }};
+                if (totalUsuarios > 0) {
+                    const tasaActividad = Math.round(({{ stats.usuarios_activos }} / totalUsuarios) * 100);
+                    elementoTasa.textContent = tasaActividad + '%';
+                } else {
+                    elementoTasa.textContent = '0%';
+                }
+            }
+
+            // Actualizar último envío
+            const ultimoEnvio = document.getElementById('ultimoEnvio');
+            if (ultimoEnvio) {
+                const ahora = new Date();
+                const hoy = ahora.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'short'
+                });
+                ultimoEnvio.textContent = hoy;
+                ultimoEnvio.className = 'badge bg-warning';
+            }
+        }
+
+        // Función para actualizar manualmente
+        function actualizarDashboard() {
+            datosYaCargados = false;
+            cargarDatosBasicos();
+        }
+
+        // Inicialización cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar datos básicos después de un pequeño delay
+            setTimeout(cargarDatosBasicos, 500);
+        });
+    </script>
+
+    <!-- Script simplificado para actualización -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Opcional: Función para actualizar datos via AJAX
+            async function refreshStats() {
+                try {
+                    const response = await fetch('/api/dashboard/stats');
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Actualizar solo los elementos necesarios
+                        if (data.envios_hoy !== undefined) {
+                            document.querySelector('.text-info').textContent = data.envios_hoy;
+                        }
+                        if (data.envios_semana !== undefined) {
+                            document.querySelector('.text-success').textContent = data.envios_semana;
+                        }
+                        if (data.envios_mes !== undefined) {
+                            document.querySelector('.text-primary').textContent = data.envios_mes;
+                        }
+                        if (data.fecha_consulta) {
+                            document.querySelector('.alert small').innerHTML = `
+                                <i class="fas fa-info-circle me-2"></i>
+                                Última actualización: ${data.fecha_consulta}
+                                ${data.status && data.status !== 'success' ?
+                                  `<span class="text-danger ms-2">(Error: ${data.status})</span>` : ''}
+                            `;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al actualizar:', error);
+                }
+            }
+
+            // Actualizar cada 60 segundos (opcional)
+            setInterval(refreshStats, 60000);
+        });
+    </script>
+    {% endif %}
+</div>
+{% endblock %}

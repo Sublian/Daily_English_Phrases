@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.locked-field {
+    background-color: #f8f9fa !important;
+    border: 2px solid #dee2e6 !important;
+    color: #6c757d !important;
+    cursor: not-allowed !important;
+    position: relative;
+}
+
+.locked-field::after {
+    content: '🔒';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.locked-field-container {
+    position: relative;
+}
+
+.locked-field-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(0,0,0,0.05) 10px,
+        rgba(0,0,0,0.05) 20px
+    );
+    pointer-events: none;
+    z-index: 1;
+    border-radius: 0.375rem;
+}
+
+.locked-label {
+    color: #6c757d !important;
+    font-weight: 500;
+}
+
+.locked-help-text {
+    color: #dc3545 !important;
+    font-weight: 500;
+}
+</style>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Mi Perfil</h5>
+                    <form method="POST" id="profileForm">
+                        <div class="mb-3">
+                            <label for="email" class="form-label locked-label">Email</label>
+                            <div class="locked-field-container">
+                                <input type="email" class="form-control locked-field" value="{{ current_user.email }}" readonly>
+                            </div>
+                            <div class="form-text locked-help-text">El email no puede ser modificado</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" value="{{ current_user.nombre or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="tipo_suscripcion" class="form-label {% if not current_user.is_admin %}locked-label{% endif %}">Tipo de Suscripción</label>
+                            {% if current_user.is_admin %}
+                                <select class="form-control" id="tipo_suscripcion" name="tipo_suscripcion">
+                                    <option value="gratuito" {% if current_user.tipo_suscripcion == 'gratuito' %}selected{% endif %}>Gratuito</option>
+                                    <option value="premium" {% if current_user.tipo_suscripcion == 'premium' %}selected{% endif %}>Premium</option>
+                                </select>
+                                <div class="form-text">Solo los administradores pueden cambiar el tipo de suscripción</div>
+                            {% else %}
+                                <div class="locked-field-container">
+                                    <input type="text" class="form-control locked-field" value="{{ current_user.tipo_suscripcion|title }}" readonly>
+                                </div>
+                                <div class="form-text locked-help-text">Contacta al administrador para cambiar tu suscripción</div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if current_user.rol == 'usuario' or current_user.is_admin %}
+                        <div class="mb-3">
+                            <label for="rol" class="form-label locked-label">Rol</label>
+                            <div class="locked-field-container">
+                                <input type="text" class="form-control locked-field" value="{{ current_user.rol|title }}" readonly>
+                            </div>
+                            <div class="form-text locked-help-text">El rol es asignado por el administrador</div>
+                        </div>
+                        {% endif %}
+                        <hr>
+                        <h6>Cambiar Contraseña</h6>
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">Contraseña Actual</label>
+                            <input type="password" class="form-control" id="current_password" name="current_password">
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">Nueva Contraseña</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password">
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="saveButton">
+                            <span id="saveText">Guardar Cambios</span>
+                            <span id="saveSpinner" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('profileForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const saveButton = document.getElementById('saveButton');
+    const saveText = document.getElementById('saveText');
+    const saveSpinner = document.getElementById('saveSpinner');
+    
+    // Mostrar spinner y deshabilitar botón
+    saveButton.disabled = true;
+    saveText.textContent = 'Guardando...';
+    saveSpinner.style.display = 'inline-block';
+    
+    // Crear FormData con los datos del formulario
+    const formData = new FormData(this);
+    
+    // Enviar datos via fetch
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            // Mostrar mensaje de éxito
+            saveText.textContent = 'Guardado ✓';
+            saveSpinner.style.display = 'none';
+            
+            // Mostrar notificación de éxito
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+            alertDiv.innerHTML = `
+                <strong>¡Éxito!</strong> Los cambios han sido guardados correctamente.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insertar la alerta antes del formulario
+            const form = document.getElementById('profileForm');
+            form.parentNode.insertBefore(alertDiv, form);
+            
+            // Refrescar la página después de 2 segundos
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            throw new Error('Error en la respuesta del servidor');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        
+        // Mostrar mensaje de error
+        saveText.textContent = 'Error al guardar';
+        saveSpinner.style.display = 'none';
+        saveButton.disabled = false;
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show mt-3';
+        alertDiv.innerHTML = `
+            <strong>Error:</strong> No se pudieron guardar los cambios. Inténtalo de nuevo.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const form = document.getElementById('profileForm');
+        form.parentNode.insertBefore(alertDiv, form);
+        
+        // Restaurar botón después de 3 segundos
+        setTimeout(() => {
+            saveText.textContent = 'Guardar Cambios';
+            saveButton.disabled = false;
+        }, 3000);
+    });
+});
+</script>
+
+{% endblock %}
